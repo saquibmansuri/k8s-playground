@@ -1,0 +1,87 @@
+# Official documentation - https://docs.github.com/en/actions/how-tos/deploy/deploy-to-third-party-platforms/google-kubernetes-engine
+name: Build & Deploy to GKE (without ArgoCD)
+on:
+  push:
+    branches:
+      - main
+
+env:
+  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GKE_CLUSTER: autopilot-cluster-1 # Add your cluster name here.
+  GKE_ZONE: us-central1-f # Add your cluster zone here.
+  IMAGE_TAG: ${{ github.sha }}
+  GCP_ARTIFACT_REGISTRY: us-central1-docker.pkg.dev # can be found in the artifact repository
+  SERVICE_ACCOUNT_USERNAME: _json_key # this stays same as we are using a service account key
+  GCP_ARTIFACT_REPOSITORY: gke-repo # artifact repository name
+  DEPLOYMENT_NAME: frontend-deployment # Add your deployment name here.
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: "read"
+      id-token: "write"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup GCloud
+        uses: "google-github-actions/auth@v3"
+        with:
+          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Login to GCP Artifact Registry
+        uses: docker/login-action@v3
+        id: login-registry
+        with:
+          registry: ${{ env.GCP_ARTIFACT_REGISTRY }}
+          username: ${{ env.SERVICE_ACCOUNT_USERNAME }}
+          password: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+
+      - name: Get GKE Cluster Credentials
+        id: "get-credentials"
+        uses: "google-github-actions/get-gke-credentials@v3"
+        with:
+          cluster_name: ${{ env.GKE_CLUSTER }}
+          location: ${{ env.GKE_ZONE }}
+
+      - name: Build, Tag and Push Image to GCP Artifact Repository
+        id: build-image
+        run: |
+          docker build -t ${{ env.GCP_ARTIFACT_REGISTRY }}/${{ env.GCP_PROJECT_ID }}/${{ env.GCP_ARTIFACT_REPOSITORY }}/app:${{ env.IMAGE_TAG }} -t ${{ env.GCP_ARTIFACT_REGISTRY }}/${{ env.GCP_PROJECT_ID }}/${{ env.GCP_ARTIFACT_REPOSITORY }}/app:latest -f Dockerfile .
+          docker push ${{ env.GCP_ARTIFACT_REGISTRY }}/${{ env.GCP_PROJECT_ID }}/${{ env.GCP_ARTIFACT_REPOSITORY }}/app:${{ env.IMAGE_TAG }}
+          docker push ${{ env.GCP_ARTIFACT_REGISTRY }}/${{ env.GCP_PROJECT_ID }}/${{ env.GCP_ARTIFACT_REPOSITORY }}/app:latest
+          echo "appimage=${{ env.GCP_ARTIFACT_REGISTRY }}/${{ env.GCP_PROJECT_ID }}/${{ env.GCP_ARTIFACT_REPOSITORY }}/app:${{ env.IMAGE_TAG }}" >> $GITHUB_OUTPUT
+
+      - name: Replace Image in Deployment YAML
+        run: |
+          sed -i "s|IMAGE_PLACEHOLDER|${{ env.GCP_ARTIFACT_REGISTRY }}/${{ env.GCP_PROJECT_ID }}/${{ env.GCP_ARTIFACT_REPOSITORY }}/app:${{ env.IMAGE_TAG }}|g" gke-files/frontend/deployment.yml
+
+      - name: Pre Check
+        run: |
+          # See what would be applied without actually doing it
+          echo "DRY RUN"
+          kubectl apply -f gke-files/frontend/ -R --dry-run=client
+
+          # Or use diff to see changes
+          echo "DIFF CHECK"
+          kubectl diff -f gke-files/frontend/ -R
+
+      - name: Release Resources to GKE
+        run: |
+          # apply files one by one
+          # kubectl apply -f gke-files/frontend/deployment.yml -n playground
+          # kubectl apply -f gke-files/frontend/service.yml -n playground
+
+          # apply all files at once
+          kubectl apply -f gke-files/frontend/ -R
+
+          # Wait for rollout to complete (safe best practice)
+          kubectl rollout status deployment/${{ env.DEPLOYMENT_NAME }} --timeout=180s
+
+      - name: List Deployments
+        run: |
+          sleep 20
+          kubectl get deployments -n playground
