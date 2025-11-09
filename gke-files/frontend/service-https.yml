@@ -34,9 +34,9 @@ metadata:
   name: frontend-ingress
   namespace: playground
   annotations:
-    kubernetes.io/ingress.class: "gce"
+    spec.ingressClassName: "gce"
     networking.gke.io/managed-certificates: "frontend-cert"
-    # kubernetes.io/ingress.class: "gce-internal"  # ← Makes the ingress internal!
+    # spec.ingressClassName: "gce-internal"  # ← Makes the ingress internal!
     # Uncomment below to redirect HTTP to HTTPS automatically
     # kubernetes.io/ingress.allow-http: "false"
 spec:
