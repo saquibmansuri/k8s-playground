@@ -8,7 +8,7 @@ on:
 env:
   GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
   GKE_CLUSTER: autopilot-cluster-1 # Add your cluster name here.
-  GKE_ZONE: us-central1-f # Add your cluster zone here.
+  GKE_LOCATION: us-central1 # Add your cluster zone here.
   IMAGE_TAG: ${{ github.sha }}
   GCP_ARTIFACT_REGISTRY: us-central1-docker.pkg.dev # can be found in the artifact repository
   SERVICE_ACCOUNT_USERNAME: _json_key # this stays same as we are using a service account key
@@ -44,8 +44,10 @@ jobs:
         id: "get-credentials"
         uses: "google-github-actions/get-gke-credentials@v3"
         with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
           cluster_name: ${{ env.GKE_CLUSTER }}
-          location: ${{ env.GKE_ZONE }}
+          location: ${{ env.GKE_LOCATION }} # required unless cluster name is a full resource name - projects/<project>/locations/<location>/clusters/<cluster>
+           
 
       - name: Build, Tag and Push Image to GCP Artifact Repository
         id: build-image
