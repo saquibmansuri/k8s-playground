@@ -14,6 +14,7 @@ env:
   SERVICE_ACCOUNT_USERNAME: _json_key # this stays same as we are using a service account key
   GCP_ARTIFACT_REPOSITORY: gke-repo # artifact repository name
   DEPLOYMENT_NAME: frontend-deployment # Add your deployment name here.
+  NAMESPACE: playground # Add your namespace here
 
 jobs:
   build-and-deploy:
@@ -47,7 +48,6 @@ jobs:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
           cluster_name: ${{ env.GKE_CLUSTER }}
           location: ${{ env.GKE_LOCATION }} # required unless cluster name is a full resource name - projects/<project>/locations/<location>/clusters/<cluster>
-           
 
       - name: Build, Tag and Push Image to GCP Artifact Repository
         id: build-image
@@ -81,9 +81,9 @@ jobs:
           kubectl apply -f gke-files/frontend/ -R
 
           # Wait for rollout to complete (safe best practice)
-          kubectl rollout status deployment/${{ env.DEPLOYMENT_NAME }} --timeout=180s
+          kubectl rollout status deployment/${{ env.DEPLOYMENT_NAME }} -n ${{ env.NAMESPACE }} --timeout=180s
 
       - name: List Deployments
         run: |
           sleep 20
-          kubectl get deployments -n playground
+          kubectl get deployment ${{ env.DEPLOYMENT_NAME }} -n ${{ env.NAMESPACE }}
