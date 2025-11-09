@@ -69,7 +69,7 @@ jobs:
 
           # Or use diff to see changes
           echo "DIFF CHECK"
-          kubectl diff -f gke-files/frontend/ -R
+          kubectl diff -f gke-files/frontend/ -R || true
 
       - name: Release Resources to GKE
         run: |
