@@ -1,5 +1,16 @@
-# Official documentation - https://docs.github.com/en/actions/how-tos/deploy/deploy-to-third-party-platforms/google-kubernetes-engine
-name: Build & Deploy to GKE (without ArgoCD)
+# EXAMPLE - https://hbayraktar.medium.com/news-summary-app-automated-ci-cd-with-github-actions-argocd-gke-c90e5575235b
+# EXAMPLE GITHUB REPO - https://github.com/hakanbayraktar/news-summary-gke
+
+# Make sure argocd is installed on the same cluster, installation guide is in gke-files-argocd/ArgoCD-Installation.md
+
+# This workflow:
+# 1. Triggers on push to main branch
+# 2. Builds and pushes Docker image
+# 3. Updates image tag in manifests
+# 4. Syncs entire gke-files-argocd folder to argocd branch (creates if doesn't exist)
+# 5. ArgoCD watches argocd branch and auto-deploys
+
+name: Build & Deploy to GKE with ArgoCD
 on:
   push:
     branches:
@@ -13,19 +24,21 @@ env:
   GCP_ARTIFACT_REGISTRY: us-central1-docker.pkg.dev # can be found in the artifact repository
   SERVICE_ACCOUNT_USERNAME: _json_key # this stays same as we are using a service account key
   GCP_ARTIFACT_REPOSITORY: gke-repo # artifact repository name
-  DEPLOYMENT_NAME: frontend-deployment # Add your deployment name here.
-  NAMESPACE: playground # Add your namespace here
+  DEPLOYMENT_NAME: frontend-deployment-argocd # Add your deployment name here.
+  NAMESPACE: playground-argocd # Add your namespace here
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     permissions:
-      contents: "read"
+      contents: "write" # write permission needed to push to argocd branch
       id-token: "write"
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # fetch all history and branches
 
       - name: Setup GCloud
         uses: "google-github-actions/auth@v3"
@@ -57,33 +70,36 @@ jobs:
           docker push ${{ env.GCP_ARTIFACT_REGISTRY }}/${{ env.GCP_PROJECT_ID }}/${{ env.GCP_ARTIFACT_REPOSITORY }}/app:latest
           echo "appimage=${{ env.GCP_ARTIFACT_REGISTRY }}/${{ env.GCP_PROJECT_ID }}/${{ env.GCP_ARTIFACT_REPOSITORY }}/app:${{ env.IMAGE_TAG }}" >> $GITHUB_OUTPUT
 
-      - name: Replace Image in Deployment YAML
+      - name: Sync Manifests to ArgoCD Branch
         run: |
-          sed -i "s|IMAGE_PLACEHOLDER|${{ env.GCP_ARTIFACT_REGISTRY }}/${{ env.GCP_PROJECT_ID }}/${{ env.GCP_ARTIFACT_REPOSITORY }}/app:${{ env.IMAGE_TAG }}|g" gke-files/frontend/deployment.yml
+          # Configure git
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Pre Check
-        run: |
-          # See what would be applied without actually doing it
-          echo "DRY RUN"
-          kubectl apply -f gke-files/frontend/ -R --dry-run=client
+          # Fetch all branches
+          git fetch origin
 
-          # Or use diff to see changes
-          echo "DIFF CHECK"
-          kubectl diff -f gke-files/frontend/ -R || true
+          # Update image in deployment.yml on main branch (working directory)
+          sed -i "s|image:.*|image: ${{ steps.build-image.outputs.appimage }}|g" gke-files-argocd/frontend/deployment.yml
 
-      - name: Release Resources to GKE
-        run: |
-          # apply files one by one
-          # kubectl apply -f gke-files/frontend/deployment.yml -n playground
-          # kubectl apply -f gke-files/frontend/service.yml -n playground
+          # Switch to argocd branch (create if doesn't exist)
+          git checkout argocd 2>/dev/null || git checkout -b argocd
+          git pull origin argocd 2>/dev/null || true
 
-          # apply all files at once
-          kubectl apply -f gke-files/frontend/ -R
+          # Remove old gke-files-argocd in argocd branch (git operation, not filesystem)
+          git rm -rf gke-files-argocd 2>/dev/null || true
 
-          # Wait for rollout to complete (safe best practice)
-          kubectl rollout status deployment/${{ env.DEPLOYMENT_NAME }} -n ${{ env.NAMESPACE }} --timeout=180s
+          # Copy updated gke-files-argocd from main branch
+          git checkout main -- gke-files-argocd
 
-      - name: List Everything
-        run: |
-          sleep 20
-          kubectl get all -n ${{ env.NAMESPACE }}
+          # Stage all changes (additions, modifications, deletions)
+          git add -A gke-files-argocd
+
+          # Commit and push to argocd branch
+          if git diff --staged --quiet; then
+            echo "✅ No changes to commit"
+          else
+            git commit -m "🚀 Manifests: Update image to ${{ env.IMAGE_TAG }}"
+            git push origin argocd
+            echo "✅ Manifests synced to argocd branch - ArgoCD will auto-deploy"
+          fi
