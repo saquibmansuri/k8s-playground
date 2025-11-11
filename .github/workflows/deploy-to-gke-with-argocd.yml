@@ -79,9 +79,6 @@ jobs:
           # Fetch all branches
           git fetch origin
 
-          # Update image in deployment.yml on main branch (working directory)
-          sed -i "s|image:.*|image: ${{ steps.build-image.outputs.appimage }}|g" gke-files-argocd/frontend/deployment.yml
-
           # Switch to argocd branch (create if doesn't exist)
           git checkout argocd 2>/dev/null || git checkout -b argocd
           git pull origin argocd 2>/dev/null || true
@@ -89,8 +86,11 @@ jobs:
           # Remove old gke-files-argocd in argocd branch (git operation, not filesystem)
           git rm -rf gke-files-argocd 2>/dev/null || true
 
-          # Copy updated gke-files-argocd from main branch
+          # Copy fresh gke-files-argocd from main branch
           git checkout main -- gke-files-argocd
+
+          # Now update image in deployment.yml (in argocd branch)
+          sed -i "s|image:.*|image: ${{ steps.build-image.outputs.appimage }}|g" gke-files-argocd/frontend/deployment.yml
 
           # Stage all changes (additions, modifications, deletions)
           git add -A gke-files-argocd
