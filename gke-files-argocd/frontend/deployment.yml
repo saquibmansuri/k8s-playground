@@ -17,6 +17,6 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: us-central1-docker.pkg.dev/poc-projects-475412/gke-repo/app:9051367cb8faf7e6aebeb05913ff5bac49a365c1
+          image: us-central1-docker.pkg.dev/poc-projects-475412/gke-repo/app:d445862b39be7e8fd2ac096e8b5935b46af08e9d
           ports:
             - containerPort: 3000

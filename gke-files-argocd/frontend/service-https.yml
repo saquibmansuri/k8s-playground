@@ -1,0 +1,52 @@
+---
+# ClusterIP Service for HTTPS Ingress (Google-managed SSL)
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-service-external-https-argocd
+  namespace: playground-argocd
+spec:
+  type: ClusterIP
+  selector:
+    app: frontend
+  ports:
+    - protocol: TCP
+      port: 3000
+      targetPort: 3000
+
+---
+# Google-managed SSL Certificate
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: frontend-cert-argocd
+  namespace: playground-argocd
+spec:
+  domains:
+    - testargocd.themespot.publicvm.com # Replace with your actual domain
+
+---
+# Ingress with Google-managed SSL
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: frontend-ingress-argocd
+  namespace: playground-argocd
+  annotations:
+    spec.ingressClassName: "gce"
+    networking.gke.io/managed-certificates: "frontend-cert-argocd"
+    # spec.ingressClassName: "gce-internal"  # ← Makes the ingress internal!
+    # Uncomment below to redirect HTTP to HTTPS automatically
+    # kubernetes.io/ingress.allow-http: "false"
+spec:
+  rules:
+    - host: testargocd.themespot.publicvm.com # Replace with your actual domain
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend-service-external-https-argocd
+                port:
+                  number: 3000
