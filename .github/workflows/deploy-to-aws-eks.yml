@@ -35,12 +35,11 @@ jobs:
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: ${{ env.ECR_REPOSITORY }}
-          IMAGE_TAG: ${{ env.IMAGE_TAG }}
         run: |
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY/app:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY/app:latest -f Dockerfile .
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY/app:$IMAGE_TAG
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY/app:latest
-          echo "appimage=$ECR_REGISTRY/$ECR_REPOSITORY/app:$IMAGE_TAG" >> $GITHUB_OUTPUT
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:app.${{ env.IMAGE_TAG }} -t $ECR_REGISTRY/$ECR_REPOSITORY:app.latest -f Dockerfile .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:app.${{ env.IMAGE_TAG }}
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:app.latest
+          echo "appimage=$ECR_REGISTRY/$ECR_REPOSITORY:app.${{ env.IMAGE_TAG }}" >> $GITHUB_OUTPUT
 
       - name: Connect to EKS Cluster
         run: aws eks update-kubeconfig --name $EKS_CLUSTER_NAME --region $AWS_REGION
