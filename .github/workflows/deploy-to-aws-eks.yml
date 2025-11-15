@@ -68,6 +68,9 @@ jobs:
           # create namespace if it doesn't exist
           kubectl create namespace ${{ env.NAMESPACE }} || true
 
+          # apply IngressClass first (required for ingress to work)
+          kubectl apply -f aws-eks-manifests/ingress-class.yml
+
           # apply all files at once
           kubectl apply -f aws-eks-manifests/ -R
 

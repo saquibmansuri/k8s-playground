@@ -3,7 +3,7 @@ name: Build & Deploy to GKE (without ArgoCD)
 on:
   push:
     branches:
-      - main
+      - mainn
 
 env:
   GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
