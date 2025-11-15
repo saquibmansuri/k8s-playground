@@ -1,0 +1,45 @@
+---
+# ClusterIP Service for HTTPS Ingress (AWS ALB)
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-service-https
+  namespace: playground
+spec:
+  type: ClusterIP
+  selector:
+    app: frontend
+  ports:
+    - protocol: TCP
+      port: 3000
+      targetPort: 3000
+
+---
+# AWS ALB Ingress with ACM SSL Certificate
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: frontend-ingress
+  namespace: playground
+  annotations:
+    # AWS Load Balancer Controller annotations
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    # Replace with your ACM Certificate ARN, you can get it from AWS Console
+    alb.ingress.kubernetes.io/certificate-arn: FRONTEND_CERT_ARN_PLACEHOLDER
+    # alb.ingress.kubernetes.io/scheme: internal # Uncomment for internal ALB
+spec:
+  ingressClassName: alb
+  rules:
+    - host: testaws.themespot.publicvm.com # Replace with your actual domain
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend-service-https
+                port:
+                  number: 3000
