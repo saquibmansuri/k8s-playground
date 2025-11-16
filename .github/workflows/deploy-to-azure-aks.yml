@@ -2,7 +2,7 @@
 # It is split into separate jobs for readability but could be squashed into a single job if that best suits your scenario
 # Official doc link - https://github.com/Azure/aks-baseline-automation/blob/main/.github/workflows/App-Flask-DockerBuild.yml
 
-name: Deploy to Azure AKS (Official Method)
+name: Deploy to Azure AKS
 
 on:
   workflow_dispatch:
@@ -152,8 +152,8 @@ jobs:
           ACRNAME: "${{ inputs.ACRNAME}}"
         with:
           manifests: |
-           azure-aks-manifests/deployment.yaml
-           azure-aks-manifests/ingress.yaml
+           azure-aks-manifests/deployment.yml
+           azure-aks-manifests/ingress.yml
           images: |
             ${{ env.ACRNAME }}.azurecr.io/${{ inputs.APPNAME }}:${{ github.sha }}
           namespace: ${{ inputs.NAMESPACE }}
