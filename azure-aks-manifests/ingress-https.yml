@@ -1,0 +1,26 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-service
+  namespace: playground
+  annotations:
+    kubernetes.io/ingress.class: azure/application-gateway # old annotation, but keeping for testing
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    appgw.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  ingressClassName: azure-application-gateway
+  tls:
+    - hosts:
+        - testaks.themespot.publicvm.com # tells cert manager to create cert for this domain
+      secretName: myapp-tls # this is where cert is auto created and stored by cert manager
+  rules:
+    - host: testaks.themespot.publicvm.com # this is for routing to the service
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend-service
+                port:
+                  number: 3000
