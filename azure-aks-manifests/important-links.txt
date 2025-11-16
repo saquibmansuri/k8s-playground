@@ -14,3 +14,6 @@ https://github.com/Azure/aks-baseline-automation/blob/main/.github/workflows/IaC
 
 # IAC bicep AKS
 https://github.com/Azure/aks-baseline-automation/blob/main/.github/workflows/IaC-bicep-AKSClusterOnly.yml
+
+# YOU NEED TO ENABLE INGRES CONTROLLER FOR YOUR CLUSTER TO BE ABLE TO CREATE APPLICATION GATEWAYS (this can be done at the time of creation or later)
+https://learn.microsoft.com/en-us/azure/application-gateway/tutorial-ingress-controller-add-on-existing#enable-the-agic-add-on-in-existing-aks-cluster-through-azure-portal
