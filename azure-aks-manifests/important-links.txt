@@ -1,0 +1,16 @@
+# official repo githu - https://github.com/Azure/aks-baseline-automation
+
+# Push & pull (argocd) deploy method
+https://github.com/Azure/aks-baseline-automation/blob/main/workloads/docs/README.md
+
+# pull method deploy doc
+https://github.com/Azure/aks-baseline-automation/blob/main/workloads/docs/app-flask-pull-gitops.md
+
+# push method deploy doc
+https://github.com/Azure/aks-baseline-automation/blob/main/workloads/docs/app-flask-push-dockerbuild.md
+
+# IAC terraform aks
+https://github.com/Azure/aks-baseline-automation/blob/main/.github/workflows/IaC-terraform-AKS.yml
+
+# IAC bicep AKS
+https://github.com/Azure/aks-baseline-automation/blob/main/.github/workflows/IaC-bicep-AKSClusterOnly.yml
